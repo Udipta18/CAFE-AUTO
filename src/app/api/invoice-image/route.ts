@@ -12,11 +12,11 @@ export async function GET(request: NextRequest) {
       return new Response("Missing id parameter", { status: 400 });
     }
 
-    const svg = await ImageService.generateInvoiceSvg(id);
+    const buffer = await ImageService.generateInvoiceImageBuffer(id);
 
-    return new Response(svg, {
+    return new Response(buffer, {
       headers: {
-        "Content-Type": "image/svg+xml",
+        "Content-Type": "image/png",
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });

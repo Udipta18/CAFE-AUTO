@@ -12,6 +12,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   generateInvoice,
   generatePaidInvoice,
 } from "@/actions/invoice.actions";
@@ -24,6 +31,7 @@ import {
   Banknote,
   CalendarClock,
   ChevronDown,
+  Download,
   ExternalLink,
   ReceiptText,
 } from "lucide-react";
@@ -58,6 +66,10 @@ export function LiveTransactionsSection({
     {}
   );
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const [generatedReceipt, setGeneratedReceipt] = useState<{
+    summary: LiveTransactionSummary;
+    imageUrl: string;
+  } | null>(null);
 
   function toggleExpanded(customerId: string) {
     setExpandedRows((current) => ({
@@ -68,62 +80,20 @@ export function LiveTransactionsSection({
 
   async function sharePaidInvoiceImage(
     summary: LiveTransactionSummary,
-    invoiceId: string,
-    targetWindow: Window | null
+    invoiceId: string
   ) {
-    let imageData;
-    try {
-      const imageResponse = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invoiceId }),
-      });
-      imageData = await imageResponse.json();
-    } catch (err) {
-      targetWindow?.close();
-      throw err;
-    }
+    const imageResponse = await fetch("/api/generate-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invoiceId }),
+    });
+    const imageData = await imageResponse.json();
 
     if (!imageData.success || !imageData.imageUrl) {
-      targetWindow?.close();
       throw new Error(imageData.error || "Failed to generate receipt image");
     }
 
-    setReceiptImages((current) => ({
-      ...current,
-      [summary.customerId]: imageData.imageUrl,
-    }));
-
-    const fileResponse = await fetch(imageData.imageUrl);
-    const blob = await fileResponse.blob();
-    const extension = imageData.imageUrl.split(".").pop() || "svg";
-    const file = new File([blob], `click-sip-receipt-${invoiceId}.${extension}`, {
-      type: blob.type || "image/svg+xml",
-    });
-
-    try {
-      if (
-        navigator.canShare?.({ files: [file] }) &&
-        typeof navigator.share === "function"
-      ) {
-        await navigator.share({
-          files: [file],
-          title: "Click Sip paid receipt",
-          text: `${summary.customerName} paid ${formatCurrency(summary.total)} at Click Sip.`,
-        });
-        targetWindow?.close();
-        return;
-      }
-    } catch (shareError) {
-      console.error("Web Share failed:", shareError);
-    }
-
-    if (targetWindow) {
-      targetWindow.location.assign(imageData.imageUrl);
-    } else {
-      window.open(imageData.imageUrl, "_blank", "noopener,noreferrer");
-    }
-    toast.info("Receipt image opened. Share or download it to send on WhatsApp.");
+    return imageData.imageUrl;
   }
 
   async function shareExistingReceiptImage(
@@ -133,29 +103,33 @@ export function LiveTransactionsSection({
     try {
       const fileResponse = await fetch(imageUrl);
       const blob = await fileResponse.blob();
-      const extension = imageUrl.split(".").pop() || "svg";
+
       const file = new File(
         [blob],
-        `click-sip-receipt-${summary.customerId}.${extension}`,
-        {
-          type: blob.type || "image/svg+xml",
-        }
+        `click-sip-receipt-${summary.customerId}.png`,
+        { type: "image/png" }
       );
 
       if (
-        navigator.canShare?.({ files: [file] }) &&
-        typeof navigator.share === "function"
+        typeof navigator.share === "function" &&
+        navigator.canShare?.({ files: [file] })
       ) {
         await navigator.share({
           files: [file],
-          title: "Click Sip paid receipt",
-          text: `${summary.customerName} paid ${formatCurrency(summary.total)} at Click Sip.`,
+          title: "Click Sip Paid Receipt",
+          text: `Receipt for ${summary.customerName}`,
         });
+        toast.success("Shared successfully");
         return;
       }
 
-      window.open(imageUrl, "_blank", "noopener,noreferrer");
-      toast.info("Receipt image opened. Share or download it to send on WhatsApp.");
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = file.name;
+      a.click();
+      URL.revokeObjectURL(downloadUrl);
+      toast.info("Image downloaded. You can now share it.");
     } catch {
       toast.error("Failed to share receipt image");
     }
@@ -165,8 +139,6 @@ export function LiveTransactionsSection({
     summary: LiveTransactionSummary,
     mode: "paid-now" | "pay-later"
   ) {
-    const imageWindow =
-      mode === "paid-now" ? window.open("about:blank", "_blank") : null;
     const whatsAppWindow =
       mode === "pay-later" ? window.open("about:blank", "_blank") : null;
 
@@ -179,15 +151,18 @@ export function LiveTransactionsSection({
 
         if (!result.success || !result.data) {
           whatsAppWindow?.close();
-          imageWindow?.close();
           toast.error(result.error);
           return;
         }
 
         const invoice = result.data;
         if (mode === "paid-now") {
-          await sharePaidInvoiceImage(summary, invoice.id, imageWindow);
-          toast.success("Paid receipt image is ready to share");
+          const imageUrl = await sharePaidInvoiceImage(summary, invoice.id);
+          setGeneratedReceipt({
+            summary,
+            imageUrl,
+          });
+          toast.success("Paid receipt generated successfully.");
           return;
         }
 
@@ -210,36 +185,86 @@ export function LiveTransactionsSection({
           toast.info("Click Open WhatsApp to send the invoice.");
         }
 
-        toast.success(
-          "Pay later WhatsApp link is ready"
-        );
+        toast.success("Pay later WhatsApp link is ready");
       } catch {
         whatsAppWindow?.close();
-        imageWindow?.close();
         toast.error("Failed to generate invoice");
       }
     });
   }
 
+  const generatedReceiptDialog = (
+    <Dialog open={!!generatedReceipt} onOpenChange={(open) => !open && setGeneratedReceipt(null)}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Receipt Generated</DialogTitle>
+          <DialogDescription>
+            The transaction for {generatedReceipt?.summary.customerName} has been marked as paid.
+          </DialogDescription>
+        </DialogHeader>
+        {generatedReceipt && (
+          <div className="flex flex-col gap-4 py-4">
+            <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
+              <span className="font-medium text-sm">Total Paid</span>
+              <span className="font-bold text-lg">{formatCurrency(generatedReceipt.summary.total)}</span>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Button 
+                onClick={() => shareExistingReceiptImage(generatedReceipt.summary, generatedReceipt.imageUrl)}
+                className="w-full"
+              >
+                <WhatsAppIcon className="mr-2 h-4 w-4" />
+                Share Receipt via WhatsApp
+              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => window.open(generatedReceipt.imageUrl, "_blank", "noopener,noreferrer")}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Preview
+                </Button>
+                <a
+                  href={generatedReceipt.imageUrl}
+                  download={`click-sip-paid-receipt-${generatedReceipt.summary.customerId}.png`}
+                  className="flex-1 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download PNG
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
   if (liveTransactions.length === 0) {
     return (
-      <section className="rounded-lg border border-dashed border-border p-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
-            <ReceiptText className="h-5 w-5 text-muted-foreground" />
+      <>
+        <section className="rounded-lg border border-dashed border-border p-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+              <ReceiptText className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Live Transactions</h2>
+              <p className="text-sm text-muted-foreground">
+                No active customer bills right now.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg font-semibold">Live Transactions</h2>
-            <p className="text-sm text-muted-foreground">
-              No active customer bills right now.
-            </p>
-          </div>
-        </div>
-      </section>
+        </section>
+        {generatedReceiptDialog}
+      </>
     );
   }
 
   return (
+    <>
+
     <section className="space-y-3">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -350,6 +375,15 @@ export function LiveTransactionsSection({
                           Preview receipt
                           <ExternalLink className="h-3 w-3" />
                         </a>
+                        <a
+                          href={receiptImages[summary.customerId]}
+                          download={`click-sip-paid-receipt-${summary.customerId}.png`}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-primary underline-offset-4 hover:underline"
+                          id={`download-paid-receipt-${summary.customerId}`}
+                        >
+                          Download PNG
+                          <Download className="h-3 w-3" />
+                        </a>
                       </div>
                     ) : whatsAppLinks[summary.customerId] ? (
                       <a
@@ -440,6 +474,9 @@ export function LiveTransactionsSection({
           </TableBody>
         </Table>
       </div>
+
+      {generatedReceiptDialog}
     </section>
+    </>
   );
 }

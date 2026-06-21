@@ -282,9 +282,19 @@ export default async function PublicInvoicePage({
                 Thank you!
               </p>
               <p className="mt-4 text-[18px] leading-7">
-                Please review the invoice
-                <br />
-                and confirm.
+                {invoice.status === "PAID" ? (
+                  <>
+                    Here is your receipt.
+                    <br />
+                    We appreciate your business.
+                  </>
+                ) : (
+                  <>
+                    Please review the invoice
+                    <br />
+                    and confirm.
+                  </>
+                )}
               </p>
             </div>
             <div className="space-y-4">
