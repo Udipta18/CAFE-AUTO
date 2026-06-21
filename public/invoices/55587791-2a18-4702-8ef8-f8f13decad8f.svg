@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="820" viewBox="0 0 600 820">
+  <defs>
+    <style>
+      .brand { font: 900 46px Arial, sans-serif; fill: #050505; }
+      .label { font: 700 14px Arial, sans-serif; fill: #5f5537; text-transform: uppercase; }
+      .text { font: 500 20px Arial, sans-serif; fill: #101010; }
+      .item { font: 500 18px Arial, sans-serif; fill: #101010; }
+      .strong { font-weight: 800; }
+      .muted { font: 500 15px Arial, sans-serif; fill: #766b4a; }
+    </style>
+  </defs>
+  <rect width="600" height="820" rx="28" fill="#fffaf0"/>
+  <rect width="600" height="160" rx="28" fill="#ffc400"/>
+  <rect y="132" width="600" height="28" fill="#ffc400"/>
+  <circle cx="78" cy="78" r="42" fill="#050505"/>
+  <text x="78" y="92" text-anchor="middle" font-family="Arial, sans-serif" font-size="38" font-weight="900" fill="#ffc400">CS</text>
+  <text x="140" y="74" class="brand">CLICK SIP</text>
+  <text x="142" y="106" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#2c2718">PAID RECEIPT</text>
+
+  <rect x="36" y="190" width="528" height="92" rx="16" fill="#ffffff" stroke="#eadcae"/>
+  <text x="58" y="225" class="label">Customer</text>
+  <text x="58" y="255" class="text strong">VIRAT KOHLI</text>
+  <text x="430" y="225" class="label">Date</text>
+  <text x="430" y="255" class="text">21 Jun 2026</text>
+
+  <text x="42" y="326" class="label">Item</text>
+  <text x="330" y="326" class="label" text-anchor="middle">Qty</text>
+  <text x="558" y="326" class="label" text-anchor="end">Amount</text>
+  <line x1="36" y1="342" x2="564" y2="342" stroke="#050505" stroke-width="2"/>
+  <g transform="translate(0, 70)">
+    
+          <text x="48" y="292" class="item">SLIK CUT BLUE </text>
+          <text x="330" y="292" class="item" text-anchor="middle">x3</text>
+          <text x="552" y="292" class="item strong" text-anchor="end">₹18</text>
+          <line x1="42" y1="310" x2="558" y2="310" stroke="#eadcae" stroke-width="1" />
+        
+    
+  </g>
+
+  <rect x="36" y="690" width="528" height="86" rx="18" fill="#ffc400"/>
+  <text x="62" y="744" font-family="Arial, sans-serif" font-size="28" font-weight="900" fill="#050505">TOTAL</text>
+  <text x="538" y="744" text-anchor="end" font-family="Arial, sans-serif" font-size="32" font-weight="900" fill="#050505">₹18</text>
+  <text x="300" y="802" text-anchor="middle" class="muted">Thank you for choosing Click Sip</text>
+</svg>
