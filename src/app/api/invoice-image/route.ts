@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const buffer = await ImageService.generateInvoiceImageBuffer(id);
 
-    return new Response(buffer, {
+    return new Response(buffer as unknown as BodyInit, {
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=31536000, immutable",
